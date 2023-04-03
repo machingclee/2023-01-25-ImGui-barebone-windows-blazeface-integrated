@@ -10,9 +10,8 @@
 bool back_detector = false;
 std::string CV2_NAMED_WINDOW = "Facial Landmarks";
 int VIDEO_CAPTURE_DEVICE_ENUM = 1;
-std::string FACE_DETECTOR_WEIGHT_PATH = "C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows\\mediapipe_libtorch\\src\\mediapipe_libtorch\\face_detector.pt";
-std::string FACE_REGRESSOR_WEIGHT_PATH = "C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows\\mediapipe_libtorch\\src\\mediapipe_libtorch\\face_regressor.pt";
-
+std::string FACE_DETECTOR_WEIGHT_PATH = "C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows-blazeface-integrated\\mediapipe_libtorch\\src\\mediapipe_libtorch\\face_detector.pt";
+std::string FACE_REGRESSOR_WEIGHT_PATH = "C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows-blazeface-integrated\\mediapipe_libtorch\\src\\mediapipe_libtorch\\face_regressor.pt";
 namespace facial_landmark
 {
     using namespace torch::indexing;

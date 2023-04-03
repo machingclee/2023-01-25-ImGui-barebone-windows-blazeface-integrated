@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(EyeCatching VERSION 0.1.0)
-set(CMAKE_BUILD_TYPE Debug)
+
+message(STATUS "CMAKE_BUILD_TYPE = ${PROJECT_VARIANT}")
+
+
 set(WEB_SERVER_LIB web_server_lib)
 set(UTILS_LIB utils)
 set(IMGUI_LIB imgui_lib)
@@ -16,7 +19,6 @@ set(BOOST_LIBRARYDIR "${BOOST_ROOT}\\stage\\lib")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
-# list(APPEND CMAKE_C_STANDARD_LIBRARIES wsock32.lib ws2_32.lib)
 list(APPEND CMAKE_C_STANDARD_LIBRARIES)
 
 include(cmake/link_opencv_and_torch.cmake)
@@ -35,12 +37,14 @@ add_subdirectory(test)
 add_subdirectory(mediapipe_libtorch)
 
 if (MSVC)
-  message("copying dll files")
-  file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
+  message("copying dll and pdb files")
+  file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll" )
+  file(GLOB TORCH_PDBS "${TORCH_INSTALL_PREFIX}/lib/*.pdb")
+  set(TORCH_FILES ${TORCH_DLLS} ${TORCH_PDBS})
   add_custom_command(TARGET EyeCatching
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                     ${TORCH_DLLS}
+                     ${TORCH_PDBS}
                      $<TARGET_FILE_DIR:EyeCatching>)
 endif (MSVC)
 
