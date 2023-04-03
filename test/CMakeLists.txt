@@ -8,6 +8,6 @@ if (MSVC)
   add_custom_command(TARGET test
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                     ${TORCH_PDBS}
+                     ${TORCH_FILES}
                      $<TARGET_FILE_DIR:test>)
 endif (MSVC)
