@@ -12,13 +12,18 @@ namespace facial_landmark
     void start_detection()
     {
         blazeface::BlazeFace face_detector = blazeface::BlazeFace(back_detector);
+        face_detector->to(torch::kFloat32);
         face_detector->load_parameters(FACE_DETECTOR_WEIGHT_PATH);
         face_detector->eval();
         face_detector->load_anchors();
 
         auto face_regressor = blazeface_landmark::BlazeFaceLandmark();
+        face_regressor->to(torch::kFloat32);
         face_regressor->load_parameters(FACE_REGRESSOR_WEIGHT_PATH);
         face_regressor->eval();
+
+        // face_detector->print_parameters("C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows-blazeface-integrated\\face_detector_cpp.txt", true);
+        // face_regressor->print_parameters("C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows-blazeface-integrated\\face_regressor_cpp.txt", true);
 
         cv::VideoCapture capture(1);
 
@@ -37,11 +42,12 @@ namespace facial_landmark
             {
                 throw std::exception("Blank frame grabbed.");
             }
-
+            assert(frame.channels() == 3);
             cv::Mat frame_for_prediction;
             cv::cvtColor(frame, frame_for_prediction, cv::COLOR_BGR2RGB);
+            frame_for_prediction.convertTo(frame_for_prediction, CV_32FC3, 1 / 255.0);
 
-            auto [_, img2, scale, pad]         = blazebase::resize_pad(frame);
+            auto [_, img2, scale, pad]         = blazebase::resize_pad(frame_for_prediction);
             torch::Tensor img2_                = blazebase::frame_to_input_tensor(img2);
             auto normalized_face_detections    = face_detector->predict_on_image(img2_);
             auto face_detections               = blazebase::denormalize_detections(normalized_face_detections, scale, pad);

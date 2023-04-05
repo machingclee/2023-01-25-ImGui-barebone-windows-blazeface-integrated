@@ -7,14 +7,14 @@
 #include <optional>
 #include "utils/npy_utils.h"
 #include "opencv2/opencv.hpp"
-
+#include <iostream>
 namespace blazebase
 {
-    torch::Tensor frame_to_input_tensor(cv::Mat mat)
+    torch::Tensor frame_to_input_tensor(cv::Mat& mat)
     {
-        int height = mat.rows;
-        int width = mat.cols;
-        torch::Tensor result = torch::from_blob(mat.data, { 1, height, width, 3 }).toType(torch::kFloat32).permute({ 0, 3, 1, 2 });
+        int height           = mat.rows;
+        int width            = mat.cols;
+        torch::Tensor result = torch::from_blob(mat.data, { 1, height, width, 3 }).permute({ 0, 3, 1, 2 }).toType(torch::kByte).toType(torch::kFloat32);
         return result;
     }
 
@@ -23,33 +23,33 @@ namespace blazebase
         cv::Size size0 = img.size();
         int h1 = 1, w1 = 1, padh = 1, padw = 1;
         float scale = 1;
-        int rows = size0.height;
-        int cols = size0.width;
-        if (rows >= cols)
+        int size0_0 = size0.height;
+        int size0_1 = size0.width;
+        if (size0_0 >= size0_1)
         {
-            h1 = 256;
-            w1 = (int)(256 * cols / rows);
-            padh = 0;
-            padw = 256 - w1;
-            scale = cols / w1;
+            h1    = 256;
+            w1    = static_cast<int>(256 * static_cast<float>(size0_1) / size0_0);
+            padh  = 0;
+            padw  = 256 - w1;
+            scale = static_cast<float>(size0_1) / w1;
         }
         else
         {
-            h1 = (int)(256 * rows / cols);
-            w1 = 256;
-            padh = 256 - h1;
-            padw = 0;
-            scale = rows / h1;
+            h1    = static_cast<int>(256 * static_cast<float>(size0_0) / size0_1);
+            w1    = 256;
+            padh  = 256 - h1;
+            padw  = 0;
+            scale = ((float)size0_0) / h1;
         }
-        int padh1 = int(padh / 2);
-        int padh2 = int(padh / 2) + (padh % 2);
-        int padw1 = int(padw / 2);
-        int padw2 = int(padw / 2) + (padw % 2);
+        int padh1 = (int)(static_cast<float>(padh) / 2);
+        int padh2 = (int)(static_cast<float>(padh) / 2) + (padh % 2);
+        int padw1 = (int)(static_cast<float>(padw) / 2);
+        int padw2 = (int)(static_cast<float>(padw) / 2) + (padw % 2);
 
         cv::Mat img1;
         cv::resize(img, img1, cv::Size(w1, h1));
         cv::copyMakeBorder(img1, img1, padh1, padh2, padw1, padw2, cv::BORDER_CONSTANT, cv::Scalar(0));
-        std::tuple<int, int> pad = { (int)(padh1 * scale), (int)(padw1 * scale) };
+        std::tuple<int, int> pad = { static_cast<int>(padh1 * scale), static_cast<int>(padw1 * scale) };
         cv::Mat img2;
         cv::resize(img1, img2, cv::Size(128, 128));
 
@@ -81,7 +81,7 @@ namespace blazebase
 
     void nnModule::load_parameters(std::string pt_pth)
     {
-        std::vector<char> f = this->get_the_bytes(pt_pth);
+        std::vector<char> f               = this->get_the_bytes(pt_pth);
         c10::Dict<IValue, IValue> weights = torch::pickle_load(f).toGenericDict();
 
         const torch::OrderedDict<std::string, at::Tensor>& model_params = this->named_parameters();
@@ -99,13 +99,66 @@ namespace blazebase
 
             if (std::find(param_names.begin(), param_names.end(), name) != param_names.end())
             {
-                model_params.find(name)->copy_(param);
+                auto target_model_param = model_params.find(name);
+
+                for (int i = 0; i < target_model_param->sizes().size(); i++)
+                {
+                    assert(target_model_param->sizes()[i] == param.sizes()[i]);
+                }
+
+                target_model_param->copy_(param);
             }
             else
             {
                 std::cout << name << " does not exist among model parameters." << std::endl;
             };
         }
+    }
+
+    void nnModule::print_parameters(std::string file_path, bool with_weight)
+    {
+
+        std::ostringstream oss;
+
+        for (const auto& pair : named_parameters())
+        {
+            oss << "[" << pair.key() << "] ";
+            int shape_arr_size = pair.value().sizes().size();
+
+            std::string size_tuple_str = "torch.Size([";
+            for (int i = 0; i < shape_arr_size; i++)
+            {
+                std::string curr_dim_len = std::to_string(pair.value().sizes()[i]);
+                size_tuple_str += curr_dim_len;
+                if (i != (shape_arr_size - 1))
+                {
+                    size_tuple_str += ", ";
+                }
+            }
+            size_tuple_str += "])";
+
+            oss << size_tuple_str << "\n";
+
+            if (with_weight)
+            {
+                oss << pair.value()
+                    << "\n"
+                    << "---------------"
+                    << "\n";
+            }
+        }
+
+        std::ofstream file;
+        file.open(file_path);
+        try
+        {
+            file << oss.str();
+        }
+        catch (std::exception err)
+        {
+            std::cout << err.what() << std::endl;
+        }
+        file.close();
     }
 
     BlazeBlockImpl::BlazeBlockImpl(
@@ -125,7 +178,7 @@ namespace blazebase
         if (stride == 2)
         {
             max_pool = nn::MaxPool2d(nn::MaxPool2dOptions({ stride, stride }));
-            padding = 0;
+            padding  = 0;
         }
         else
         {
@@ -165,7 +218,7 @@ namespace blazebase
         }
         else if ("prelu")
         {
-            act_layer = nn::PReLU(nn::PReLUOptions().num_parameters(out_channels));
+            act_layer = register_module("act", nn::PReLU(nn::PReLUOptions().num_parameters(out_channels)));
         }
         else
         {
@@ -234,7 +287,7 @@ namespace blazebase
                 .bias(true)));
 
         convs = register_module("convs", convs_);
-        act = nn::ReLU(nn::ReLUOptions(true));
+        act   = nn::ReLU(nn::ReLUOptions(true));
     }
 
     torch::Tensor FinalBlazeBlockImpl::forward(torch::Tensor x)
@@ -268,9 +321,9 @@ namespace blazebase
             { -1, 1, -1, 1 }
         };
         torch::Tensor points = torch::from_blob(points_, { 2, 4 }).toType(torch::kFloat32).view({ 1, 2, 4 });
-        points = points * scale.view({ -1, 1, 1 }) / 2;
-        theta = theta.view({ -1, 1, 1 });
-        torch::Tensor R = torch::cat(
+        points               = points * scale.view({ -1, 1, 1 }) / 2;
+        theta                = theta.view({ -1, 1, 1 });
+        torch::Tensor R      = torch::cat(
             {
                 torch::cat({ torch::cos(theta), -torch::sin(theta) }, 2),
                 torch::cat({ torch::sin(theta), torch::cos(theta) }, 2),
@@ -278,9 +331,9 @@ namespace blazebase
             1);
 
         torch::Tensor center = torch::cat({ xc.view({ -1, 1, 1 }), yc.view({ -1, 1, 1 }) }, 1);
-        points = R.matmul(points) + center;
+        points               = R.matmul(points) + center;
 
-        int res = resolution.value_or(192);
+        int res           = resolution.value_or(192);
         float _data[2][3] = {
             { 0, 0, res - 1 },
             { 0, res - 1, 0 }
@@ -296,8 +349,8 @@ namespace blazebase
         {
 
             torch::Tensor points_slice = points.index({ i, Slice(), Slice(None, 3) }).cpu();
-            auto sizes = points_slice.sizes();
-            auto pts = cv::Mat(sizes[0], sizes[1], CV_32FC1, points_slice.data_ptr()).t();
+            auto sizes                 = points_slice.sizes();
+            auto pts                   = cv::Mat(sizes[0], sizes[1], CV_32FC1, points_slice.data_ptr()).t();
 
             cv::Mat M = cv::getAffineTransform(pts, points1);
             cv::Mat frame_transformed;
@@ -312,12 +365,12 @@ namespace blazebase
 
             if (imgs.size() > 0)
             {
-                imgs_ = torch::stack(imgs).permute({ 0, 3, 1, 2 }).to(torch::kFloat32) / 255.0f;
+                imgs_    = torch::stack(imgs).permute({ 0, 3, 1, 2 }).toType(torch::kFloat32) / 255.0f;
                 affines_ = torch::stack(affines);
             }
             else
             {
-                imgs_ = torch::zeros({ 0, 3, res, res }).to(scale.device());
+                imgs_    = torch::zeros({ 0, 3, res, res }).to(scale.device());
                 affines_ = torch::zeros({ 0, 2, 3 }).to(scale.device());
             }
         }
@@ -332,7 +385,7 @@ namespace blazebase
         for (int i = 0; i < num_landmarks; i++)
         {
             auto landmark = landmarks[i];
-            auto affine = affines[i];
+            auto affine   = affines[i];
             // landmark = (affine[:, :2] @landmark[:, :2].T + affine[:, 2:]).T
             landmark = (affine.index({ Slice(), Slice(None, 2) }).matmul(landmark.index({ Slice(), Slice(None, 2) }).t()) + affine.index({ Slice(), Slice(2, None) })).t();
             landmarks.index_put_({ i, Slice(), Slice(None, 2) }, landmark);
@@ -347,7 +400,7 @@ namespace blazebase
 
     void BlazeDetector::_preprocess(torch::Tensor& x)
     {
-        x = x.to(torch::kFloat32) / 255;
+        x = x / 255.0;
     }
 
     std::vector<torch::Tensor> BlazeDetector::predict_on_batch(torch::Tensor& x)
@@ -356,19 +409,15 @@ namespace blazebase
         assert(y_scale.has_value() && x.sizes()[2] == y_scale.value());
         assert(x_scale.has_value() && x.sizes()[3] == x_scale.value());
         assert(num_coords.has_value());
-
         x = x.to(this->_device());
-        this->_preprocess(x);
-
         std::tuple<at::Tensor, at::Tensor> out;
         {
             torch::NoGradGuard no_grad;
-            out = this->forward(x);
+            out = forward(x);
         }
+        auto [raw_box, raw_score] = out;
 
-        auto [out0, out1] = out;
-
-        std::vector<torch::Tensor> detections = this->_tensors_to_detections(out0, out1, this->anchors.value());
+        std::vector<torch::Tensor> detections = this->_tensors_to_detections(raw_box, raw_score, this->anchors.value());
 
         std::vector<torch::Tensor> filtered_detections;
         for (int i = 0; i < detections.size(); i++)
@@ -401,8 +450,8 @@ namespace blazebase
 
         if (this->detection2roi_method == "box")
         {
-            xc = (detection.index({ Slice(), 1 }) + detection.index({ Slice(), 3 })) / 2;
-            yc = (detection.index({ Slice(), 0 }) + detection.index({ Slice(), 0 })) / 2;
+            xc    = (detection.index({ Slice(), 1 }) + detection.index({ Slice(), 3 })) / 2;
+            yc    = (detection.index({ Slice(), 0 }) + detection.index({ Slice(), 0 })) / 2;
             scale = detection.index({ Slice(), 3 }) - detection.index({ Slice(), 1 });
         }
         else if (this->detection2roi_method == "alignment" && kp1.has_value() && kp2.has_value())
@@ -449,20 +498,28 @@ namespace blazebase
 
         //         assert raw_box_tensor.shape[0] == raw_score_tensor.shape[0]
         assert(raw_box_tensor.sizes()[0] == raw_score_tensor.sizes()[0]);
-
-        torch::Tensor detection_boxes = this->_decode_boxes(raw_box_tensor, anchors);
-        float thresh = this->score_clipping_thresh.value();
-        raw_score_tensor = raw_score_tensor.clamp(-thresh, thresh);
+        torch::Tensor detection_boxes  = this->_decode_boxes(raw_box_tensor, anchors);
+        float thresh                   = this->score_clipping_thresh.value();
+        raw_score_tensor               = raw_score_tensor.clamp(-thresh, thresh);
         torch::Tensor detection_scores = raw_score_tensor.sigmoid().squeeze(-1);
-        torch::Tensor mask = detection_scores >= min_score_thresh.value();
+        torch::Tensor mask             = detection_scores >= min_score_thresh.value();
+
+        // std::cout << "max score: " << detection_scores.max() << std::endl;
+
+        // std::cout << "mask\n"
+        //           << mask
+        //           << std::endl;
 
         std::vector<torch::Tensor> output_detections;
+
         for (int i = 0; i < raw_box_tensor.sizes()[0]; i++)
         {
             // boxes = detection_boxes[i, mask[i]];
             torch::Tensor boxes = detection_boxes.index({ i, mask.index({ i }) });
             // scores = detection_scores[i, mask[i]].unsqueeze(dim = -1);
+            std::cout << "boxes" << boxes << std::endl;
             torch::Tensor scores = detection_scores.index({ i, mask.index({ i }) }).unsqueeze(-1);
+            std::cout << "scores" << scores << std::endl;
             // output_detections.append(torch.cat((boxes, scores), dim = -1));
             output_detections.push_back(torch::cat({ boxes, scores }, -1));
         }
@@ -480,26 +537,26 @@ namespace blazebase
         torch::Tensor remaining = torch::argsort(detections.index({ Slice(), num_coords.value() }), -1, true);
         while (remaining.sizes()[0] > 0)
         {
-            torch::Tensor detection = detections.index({ remaining.index({ 0 }) });
-            torch::Tensor first_box = detection.index({ Slice(None, 4) });
+            torch::Tensor detection   = detections.index({ remaining.index({ 0 }) });
+            torch::Tensor first_box   = detection.index({ Slice(None, 4) });
             torch::Tensor other_boxes = detections.index({ remaining, Slice(None, 4) });
-            torch::Tensor ious = overlap_similarity(first_box, other_boxes);
+            torch::Tensor ious        = overlap_similarity(first_box, other_boxes);
 
             // mask = ious > self.min_suppression_threshold
             // overlapping = remaining[mask]
             // remaining = remaining[~mask]
-            torch::Tensor mask = ious >= min_suppression_threshold.value();
+            torch::Tensor mask        = ious >= min_suppression_threshold.value();
             torch::Tensor overlapping = remaining.index({ mask });
-            torch::Tensor remaining = remaining.index({ 1 - mask });
+            torch::Tensor remaining   = remaining.index({ 1 - mask });
 
             torch::Tensor weighted_detection = detection.clone();
 
             if (overlapping.sizes()[0] > 1)
             {
                 torch::Tensor coordinates = detections.index({ overlapping, Slice(None, num_coords.value()) });
-                torch::Tensor scores = detections.index({ overlapping, Slice(num_coords.value(), num_coords.value() + 1) });
+                torch::Tensor scores      = detections.index({ overlapping, Slice(num_coords.value(), num_coords.value() + 1) });
                 torch::Tensor total_score = scores.sum();
-                torch::Tensor weighted = (coordinates * scores).sum({ 0 }) / total_score;
+                torch::Tensor weighted    = (coordinates * scores).sum({ 0 }) / total_score;
                 weighted_detection.index_put_({ Slice(None, num_coords.value()) }, weighted);
                 weighted_detection.index_put_({ num_coords.value() }, total_score / overlapping.sizes()[0]);
             }
@@ -512,7 +569,7 @@ namespace blazebase
     {
         assert(w_scale.has_value() && h_scale.has_value() && num_keypoints.has_value());
 
-        torch::Tensor boxes = torch::zeros_like(raw_boxes);
+        torch::Tensor boxes    = torch::zeros_like(raw_boxes);
         torch::Tensor x_center = raw_boxes.index({ "...", 0 }) / x_scale.value() * anchors.index({ Slice(), 2 }) +
                                  anchors.index({ Slice(), 0 });
         torch::Tensor y_center = raw_boxes.index({ "...", 1 }) / y_scale.value() * anchors.index({ Slice(), 3 }) +
@@ -528,7 +585,7 @@ namespace blazebase
 
         for (int k = 0; k < num_keypoints.value(); k++)
         {
-            int offset = 4 + k * 2;
+            int offset               = 4 + k * 2;
             torch::Tensor keypoint_x = raw_boxes.index({ "...", offset }) / x_scale.value() * anchors.index({ Slice(), 2 }) +
                                        anchors.index({ Slice(), 0 });
             torch::Tensor keypoint_y = raw_boxes.index({ "...", offset + 1 }) / y_scale.value() * anchors.index({ Slice(), 3 }) +
@@ -541,8 +598,8 @@ namespace blazebase
 
     torch::Tensor intersect(torch::Tensor box_a, torch::Tensor box_b)
     {
-        int A = box_a.sizes()[0];
-        int B = box_b.sizes()[0];
+        int A                = box_a.sizes()[0];
+        int B                = box_b.sizes()[0];
         torch::Tensor max_xy = torch::min(
             box_a.index({ Slice(), Slice(2, None) }).unsqueeze(1).expand({ A, B, 2 }),
             box_b.index({ Slice(), Slice(2, None) }).unsqueeze(0).expand({ A, B, 2 }));
@@ -555,7 +612,7 @@ namespace blazebase
 
     torch::Tensor jaccard(torch::Tensor box_a, torch::Tensor box_b)
     {
-        torch::Tensor inter = intersect(box_a, box_b);
+        torch::Tensor inter  = intersect(box_a, box_b);
         torch::Tensor area_a = ((box_a.index({ Slice(), 2 }) - box_a.index({ Slice(), 0 })) *
                                 (box_a.index({ Slice(), 3 }) - box_a.index({ Slice(), 1 })))
                                    .unsqueeze(1)

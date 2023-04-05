@@ -1,4 +1,4 @@
-add_executable(test main.cpp)
+add_executable(${TEST} main.cpp)
 target_link_libraries(test PUBLIC ${TORCH_LIB} ${NPY_LIB} ${UTILS_LIB} ${MEDIAPIPE_LIBTORCH_LIB})
 if (MSVC)
   message("copying dll and pdb files")

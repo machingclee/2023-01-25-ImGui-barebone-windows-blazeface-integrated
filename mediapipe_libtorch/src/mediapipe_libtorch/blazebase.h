@@ -14,6 +14,7 @@ namespace blazebase
     public:
         std::vector<char> get_the_bytes(std::string filename);
         void load_parameters(std::string pt_pth);
+        void print_parameters(std::string file_path, bool with_weight = false);
     };
 
     class BlazeBlockImpl : public nnModule
@@ -27,7 +28,7 @@ namespace blazebase
         nn::Conv2d skip_proj = nullptr;
         int channel_pad;
         int padding;
-        nn::Sequential convs = nullptr;
+        nn::Sequential convs   = nullptr;
         nn::MaxPool2d max_pool = nullptr;
         std::variant<nn::ReLU, nn::PReLU> act_layer;
         bool use_skip_proj = false;
@@ -36,9 +37,9 @@ namespace blazebase
         BlazeBlockImpl(
             int in_channels,
             int out_channels,
-            int kernel_size = 3,
-            int stride = 1,
-            std::string act = "relu",
+            int kernel_size    = 3,
+            int stride         = 1,
+            std::string act    = "relu",
             bool use_skip_proj = false);
 
         BlazeBlockImpl& stride_(int stride)
@@ -111,7 +112,7 @@ namespace blazebase
     class FinalBlazeBlockImpl : public nnModule
     {
         nn::Sequential convs = nullptr;
-        nn::ReLU act = nullptr;
+        nn::ReLU act         = nullptr;
 
     public:
         FinalBlazeBlockImpl(int channels, int kernel_size = 3);
@@ -127,6 +128,6 @@ namespace blazebase
 
     torch::Tensor overlap_similarity(torch::Tensor box, torch::Tensor other_boxes);
     torch::Tensor denormalize_detections(torch::Tensor detections, float scale, std::tuple<int, int> pad);
-    torch::Tensor frame_to_input_tensor(cv::Mat mat);
+    torch::Tensor frame_to_input_tensor(cv::Mat& mat);
     std::tuple<cv::Mat, cv::Mat, float, std::tuple<int, int>> resize_pad(cv::InputArray& img);
 } // namespace blazebase
