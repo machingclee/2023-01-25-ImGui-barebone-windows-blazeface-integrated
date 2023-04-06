@@ -1,7 +1,7 @@
-#include "global.h"
-#include "loader.h"
-#include "menu.h"
-#include "settings.h"
+#include "imgui/global.h"
+#include "imgui/loader.h"
+#include "imgui/menu.h"
+#include "imgui/settings.h"
 #include "config/global.h"
 #include "utils/register_protocol.h"
 /*

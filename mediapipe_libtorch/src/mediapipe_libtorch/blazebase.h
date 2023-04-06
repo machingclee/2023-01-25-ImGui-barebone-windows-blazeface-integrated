@@ -1,8 +1,7 @@
 #pragma once
-#include "torch/torch.h"
-#include <tuple>
-#include "opencv2/opencv.hpp"
-#include <variant>
+
+#include "pch.h"
+
 
 namespace blazebase
 {

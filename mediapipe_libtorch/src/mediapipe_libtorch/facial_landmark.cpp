@@ -1,4 +1,5 @@
 #include "facial_landmark.h"
+#include "visualize.h"
 
 namespace facial_landmark
 {
@@ -21,9 +22,6 @@ namespace facial_landmark
         face_regressor->to(torch::kFloat32);
         face_regressor->load_parameters(FACE_REGRESSOR_WEIGHT_PATH);
         face_regressor->eval();
-
-        // face_detector->print_parameters("C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows-blazeface-integrated\\face_detector_cpp.txt", true);
-        // face_regressor->print_parameters("C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows-blazeface-integrated\\face_regressor_cpp.txt", true);
 
         cv::VideoCapture capture(1);
 

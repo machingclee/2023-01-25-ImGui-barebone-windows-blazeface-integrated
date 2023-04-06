@@ -1,6 +1,6 @@
 #pragma once
+#include "pch.h"
 #include "blazebase.h"
-#include "torch/torch.h"
 
 namespace blazeface_landmark
 {

@@ -33,4 +33,4 @@ set(
 
 add_library(${IMGUI_LIB} ${SOURCES})
 target_link_libraries(${IMGUI_LIB} PRIVATE ${TORCH_LIBRARIES} ${OPENCV_AND_TORCH_LIB} ${WEB_SERVER_LIB} ${CONFIG} ${UTILS_LIB})
-target_include_directories(${IMGUI_LIB} PUBLIC ../imgui/include/imgui)
+target_include_directories(${IMGUI_LIB} PUBLIC include)

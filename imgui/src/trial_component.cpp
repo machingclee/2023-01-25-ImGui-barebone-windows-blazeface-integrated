@@ -1,4 +1,4 @@
-#include "trial_component.h"
+#include "imgui/trial_component.h"
 
 void TrialComponent::Render() {
     static bool buttonPressed = ImGui::Button("Button");

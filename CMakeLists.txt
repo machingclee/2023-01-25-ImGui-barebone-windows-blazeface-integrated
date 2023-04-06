@@ -52,5 +52,3 @@ endif (MSVC)
 target_link_libraries(EyeCatching PUBLIC ${IMGUI_LIB} ${UTILS_LIB} ${CONFIG})
 target_compile_features(${UTILS_LIB} PUBLIC cxx_std_20)
 target_compile_features(${WEB_SERVER_LIB} PUBLIC cxx_std_20)
-
-# target_compile_definitions(${TEST} PRIVATE DEBUG=1)

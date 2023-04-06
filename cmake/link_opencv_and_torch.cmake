@@ -5,6 +5,7 @@ set(CMAKE_PREFIX_PATH "C:\\Users\\user\\Repos\\C++Libraries\\libtorch_debug")
 set(OpenCV_DIR "C:\\Users\\user\\Repos\\C++Libraries\\opencv\\build\\x64\\vc16")
 find_package(Torch REQUIRED)
 find_package(OpenCV REQUIRED)
+
 message(STATUS "TORCH_INCLUDE_DIRS = ${TORCH_INCLUDE_DIRS}")
 message(STATUS "OpenCV_INCLUDE_DIRS = ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCV_LIBS = ${OpenCV_LIBS}")

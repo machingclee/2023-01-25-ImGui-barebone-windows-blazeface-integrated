@@ -1,13 +1,13 @@
 #pragma once
 #include "web_server/WebServer.h"
 #include "config/Global.h"
-#include "menu.h"
+#include "imgui/menu.h"
 #include "utils/capture_utils.h"
 #include "utils/web_utils.h"
-#include "icons.h"
-#include "imguipp.h"
-#include "settings.h"
-#include "text_editor.h"
+#include "imgui/icons.h"
+#include "imgui/imguipp.h"
+#include "imgui/settings.h"
+#include "imgui/text_editor.h"
 #include <string>
 #include <vector>
 

@@ -330,8 +330,10 @@ namespace blazebase
             },
             1);
 
-        torch::Tensor center = torch::cat({ xc.view({ -1, 1, 1 }), yc.view({ -1, 1, 1 }) }, 1);
-        points               = R.matmul(points) + center;
+        torch::Tensor center = torch::cat(
+            { xc.view({ -1, 1, 1 }), yc.view({ -1, 1, 1 }) },
+            1);
+        points = R.matmul(points) + center;
 
         int res           = resolution.value_or(192);
         float _data[2][3] = {
@@ -355,24 +357,23 @@ namespace blazebase
             cv::Mat M = cv::getAffineTransform(pts, points1);
             cv::Mat frame_transformed;
             cv::warpAffine(frame, frame_transformed, M, cv::Size(res, res));
-            torch::Tensor img_ = torch::from_blob(frame_transformed.data, { res, res }).to(scale.device());
+            torch::Tensor img_ = torch::from_blob(frame_transformed.data, { res, res, 3 }, torch::kByte).toType(torch::kFloat32).to(scale.device());
             imgs.push_back(img_);
 
-            cv::Mat M_reverse;
+            cv::Mat M_reverse{};
             cv::invertAffineTransform(M, M_reverse);
-            torch::Tensor affine = torch::from_blob(M_reverse.data, { M_reverse.rows, M_reverse.cols }).to(scale.device());
+            torch::Tensor affine = torch::from_blob(M_reverse.data, { M_reverse.rows, M_reverse.cols }, torch::kDouble).toType(torch::kFloat32).to(scale.device());
             affines.push_back(affine);
-
-            if (imgs.size() > 0)
-            {
-                imgs_    = torch::stack(imgs).permute({ 0, 3, 1, 2 }).toType(torch::kFloat32) / 255.0f;
-                affines_ = torch::stack(affines);
-            }
-            else
-            {
-                imgs_    = torch::zeros({ 0, 3, res, res }).to(scale.device());
-                affines_ = torch::zeros({ 0, 2, 3 }).to(scale.device());
-            }
+        }
+        if (imgs.size() > 0)
+        {
+            imgs_    = torch::stack(imgs).permute({ 0, 3, 1, 2 }).toType(torch::kFloat32) / 255.0f;
+            affines_ = torch::stack(affines);
+        }
+        else
+        {
+            imgs_    = torch::zeros({ 0, 3, res, res }).to(scale.device());
+            affines_ = torch::zeros({ 0, 2, 3 }).to(scale.device());
         }
         return std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>(imgs_, affines_, points);
     }
@@ -423,7 +424,7 @@ namespace blazebase
         for (int i = 0; i < detections.size(); i++)
         {
             torch::Tensor faces_;
-            std::vector<torch::Tensor> faces = this->_weighted_non_max_suppression(detections[i]);
+            std::vector<torch::Tensor> faces = _weighted_non_max_suppression(detections[i]);
             if (faces.size() > 0)
             {
                 faces_ = torch::stack(faces);
@@ -451,15 +452,16 @@ namespace blazebase
         if (this->detection2roi_method == "box")
         {
             xc    = (detection.index({ Slice(), 1 }) + detection.index({ Slice(), 3 })) / 2;
-            yc    = (detection.index({ Slice(), 0 }) + detection.index({ Slice(), 0 })) / 2;
+            yc    = (detection.index({ Slice(), 0 }) + detection.index({ Slice(), 2 })) / 2;
             scale = detection.index({ Slice(), 3 }) - detection.index({ Slice(), 1 });
         }
         else if (this->detection2roi_method == "alignment" && kp1.has_value() && kp2.has_value())
         {
-            xc = detection.index({ Slice(), 4 + 2 * kp1.value() });
-            yc = detection.index({ Slice(), 4 + 2 * kp1.value() + 1 });
-            x1 = detection.index({ Slice(), 4 + 2 * kp2.value() });
-            y1 = detection.index({ Slice(), 4 + 2 * kp2.value() + 1 });
+            xc    = detection.index({ Slice(), 4 + 2 * kp1.value() });
+            yc    = detection.index({ Slice(), 4 + 2 * kp1.value() + 1 });
+            x1    = detection.index({ Slice(), 4 + 2 * kp2.value() });
+            y1    = detection.index({ Slice(), 4 + 2 * kp2.value() + 1 });
+            scale = (torch::square(xc - x1) + torch::square(yc - y1)).sqrt() * 2;
         }
         else
         {
@@ -504,12 +506,6 @@ namespace blazebase
         torch::Tensor detection_scores = raw_score_tensor.sigmoid().squeeze(-1);
         torch::Tensor mask             = detection_scores >= min_score_thresh.value();
 
-        // std::cout << "max score: " << detection_scores.max() << std::endl;
-
-        // std::cout << "mask\n"
-        //           << mask
-        //           << std::endl;
-
         std::vector<torch::Tensor> output_detections;
 
         for (int i = 0; i < raw_box_tensor.sizes()[0]; i++)
@@ -517,9 +513,8 @@ namespace blazebase
             // boxes = detection_boxes[i, mask[i]];
             torch::Tensor boxes = detection_boxes.index({ i, mask.index({ i }) });
             // scores = detection_scores[i, mask[i]].unsqueeze(dim = -1);
-            std::cout << "boxes" << boxes << std::endl;
             torch::Tensor scores = detection_scores.index({ i, mask.index({ i }) }).unsqueeze(-1);
-            std::cout << "scores" << scores << std::endl;
+
             // output_detections.append(torch.cat((boxes, scores), dim = -1));
             output_detections.push_back(torch::cat({ boxes, scores }, -1));
         }
@@ -528,7 +523,6 @@ namespace blazebase
 
     std::vector<torch::Tensor> BlazeDetector::_weighted_non_max_suppression(torch::Tensor detections)
     {
-
         if (detections.sizes()[0] == 0)
         {
             return std::vector<torch::Tensor>();
@@ -542,12 +536,10 @@ namespace blazebase
             torch::Tensor other_boxes = detections.index({ remaining, Slice(None, 4) });
             torch::Tensor ious        = overlap_similarity(first_box, other_boxes);
 
-            // mask = ious > self.min_suppression_threshold
-            // overlapping = remaining[mask]
-            // remaining = remaining[~mask]
             torch::Tensor mask        = ious >= min_suppression_threshold.value();
+            torch::Tensor mask_c      = ious < min_suppression_threshold.value();
             torch::Tensor overlapping = remaining.index({ mask });
-            torch::Tensor remaining   = remaining.index({ 1 - mask });
+            remaining                 = remaining.index({ mask_c });
 
             torch::Tensor weighted_detection = detection.clone();
 
@@ -562,6 +554,7 @@ namespace blazebase
             }
             output_detections.push_back(weighted_detection);
         }
+        int num_detections = output_detections.size();
         return output_detections;
     }
 

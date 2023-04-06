@@ -4,10 +4,10 @@
 #include <regex>
 #include <string>
 
-#include "text_editor.h"
+#include "imgui/text_editor.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui.h" // for imGui::GetCurrentWindow()
+#include "imgui/imgui.h" // for imGui::GetCurrentWindow()
 
 // TODO
 // - multiline comments vs single-line: latter is blocking start of a ML

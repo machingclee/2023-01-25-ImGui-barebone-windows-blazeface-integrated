@@ -1,9 +1,5 @@
 #pragma once
-
-#include <vector>
-#include <tuple>
-#include "opencv2/opencv.hpp"
-#include "torch/torch.h"
+#include "pch.h"
 
 namespace visualize
 {
