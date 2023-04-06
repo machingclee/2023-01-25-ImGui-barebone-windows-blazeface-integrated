@@ -1,7 +1,5 @@
 #pragma once
-
 #include "pch.h"
-
 
 namespace blazebase
 {
@@ -95,7 +93,7 @@ namespace blazebase
 
     public:
         virtual std::tuple<torch::Tensor, torch::Tensor> forward(torch::Tensor tensor) = 0;
-        void load_anchors();
+        void load_anchors(std::string pt_path);
         void _preprocess(torch::Tensor& x);
         std::vector<torch::Tensor> predict_on_batch(torch::Tensor& x);
         torch::Tensor predict_on_image(torch::Tensor& img);

@@ -29,7 +29,7 @@ face_regressor.load_weights(root_dir + "/blazeface_landmark.pth")
 
 
 def save_model(model_, des_weight_path):
-    w = {k: v for k, v in model_.state_dict().items()}
+    w = {k: v.to(dtype=torch.float32) for k, v in model_.state_dict().items()}
     torch.save(w, des_weight_path)
 
 
@@ -47,5 +47,6 @@ def print_weight_list(model_, des_txt_filepath, with_weight=False):
 
 
 if __name__ == "__main__":
-    print_weight_list(face_detector, "face_detector_python.txt", with_weight=True)
-    print_weight_list(face_regressor, "face_regressor_python.txt", with_weight=True)
+    # save_model(face_detector, "face_detector.pt")
+    # save_model(face_regressor, "face_regressor.pt")
+    torch.save({"anchor": face_detector.anchors}, "anchors.pt")

@@ -1,4 +1,3 @@
-#include "torch/torch.h"
 #include "blazebase.h"
 #include <tuple>
 #include <string>
@@ -6,15 +5,20 @@
 #include <variant>
 #include <optional>
 #include "utils/npy_utils.h"
-#include "opencv2/opencv.hpp"
 #include <iostream>
+#include <typeinfo>
+#include "config/global_config.h"
+
 namespace blazebase
 {
     torch::Tensor frame_to_input_tensor(cv::Mat& mat)
     {
         int height           = mat.rows;
         int width            = mat.cols;
-        torch::Tensor result = torch::from_blob(mat.data, { 1, height, width, 3 }).permute({ 0, 3, 1, 2 }).toType(torch::kByte).toType(torch::kFloat32);
+        torch::Tensor result = torch::from_blob(mat.data, { 1, height, width, 3 }, torch::kByte)
+                                   .permute({ 0, 3, 1, 2 })
+                                   .toType(torch::kFloat32);
+        result.div_(255.0);
         return result;
     }
 
@@ -48,11 +52,11 @@ namespace blazebase
 
         cv::Mat img1;
         cv::resize(img, img1, cv::Size(w1, h1));
+        // try to save the image to test;
         cv::copyMakeBorder(img1, img1, padh1, padh2, padw1, padw2, cv::BORDER_CONSTANT, cv::Scalar(0));
         std::tuple<int, int> pad = { static_cast<int>(padh1 * scale), static_cast<int>(padw1 * scale) };
         cv::Mat img2;
         cv::resize(img1, img2, cv::Size(128, 128));
-
         return { img1, img2, scale, pad };
     }
 
@@ -95,7 +99,7 @@ namespace blazebase
         for (auto const& w : weights)
         {
             std::string name = w.key().toStringRef();
-            at::Tensor param = w.value().toTensor();
+            at::Tensor param = w.value().toTensor().toType(torch::kFloat32);
 
             if (std::find(param_names.begin(), param_names.end(), name) != param_names.end())
             {
@@ -394,9 +398,24 @@ namespace blazebase
         return landmarks;
     }
 
-    void BlazeDetector::load_anchors()
+    void BlazeDetector::load_anchors(std::string pt_path)
     {
-        anchors = npy_utils::load_anchors_face();
+        std::vector<char> f               = get_the_bytes(pt_path);
+        c10::Dict<IValue, IValue> weights = torch::pickle_load(f).toGenericDict();
+        for (auto const& w : weights)
+        {
+            std::string name = w.key().toStringRef();
+            at::Tensor param = w.value().toTensor().toType(torch::kFloat32);
+
+            if (name == "anchor")
+            {
+                std::cout << "anchors was found, loading anchors"
+                          << "\n"
+                          << param;
+                anchors = param;
+                break;
+            }
+        }
     }
 
     void BlazeDetector::_preprocess(torch::Tensor& x)
@@ -418,7 +437,8 @@ namespace blazebase
         }
         auto [raw_box, raw_score] = out;
 
-        std::vector<torch::Tensor> detections = this->_tensors_to_detections(raw_box, raw_score, this->anchors.value());
+        std::vector<torch::Tensor>
+            detections = this->_tensors_to_detections(raw_box, raw_score, this->anchors.value());
 
         std::vector<torch::Tensor> filtered_detections;
         for (int i = 0; i < detections.size(); i++)
@@ -440,7 +460,7 @@ namespace blazebase
 
     torch::Tensor BlazeDetector::predict_on_image(torch::Tensor& img)
     {
-        return this->predict_on_batch(img)[0];
+        return predict_on_batch(img)[0];
     }
 
     std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> BlazeDetector::detection2roi(torch::Tensor detection)

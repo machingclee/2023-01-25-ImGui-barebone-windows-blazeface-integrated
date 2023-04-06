@@ -1,8 +1,9 @@
+#pragma once
+
 #include "imgui/global.h"
 #include "imgui/loader.h"
 #include "imgui/menu.h"
 #include "imgui/settings.h"
-#include "config/global.h"
 #include "utils/register_protocol.h"
 /*
 Make sure to compile on x64 Release.
@@ -16,7 +17,7 @@ ImFont* Consolas = nullptr;
 
 int main(int, char**)
 {
-    RegisterProtocol::register_protocol(Global::custom_app_path);
+    RegisterProtocol::register_protocol(global_config::custom_app_path);
 
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(0), 0, 0, 0, 0, "External Menu Base", 0 };
     RegisterClassEx(&wc);
@@ -80,7 +81,7 @@ int main(int, char**)
         Menu::Theme();
         static bool p_open = true;
         {
-            ImGui::Begin(Global::application_title, &p_open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize);
+            ImGui::Begin(global_config::application_title, &p_open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize);
             {
                 Menu::Render();
             }

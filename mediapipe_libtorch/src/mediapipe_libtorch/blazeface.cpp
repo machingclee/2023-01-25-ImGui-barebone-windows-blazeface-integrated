@@ -1,4 +1,5 @@
 #include "blazeface.h"
+#include "config/global_config.h"
 
 namespace blazeface
 {
@@ -24,7 +25,7 @@ namespace blazeface
             y_scale          = 128.0;
             h_scale          = 128.0;
             w_scale          = 128.0;
-            min_score_thresh = 0.1;
+            min_score_thresh = global_config::blazeface_min_score_thres;
         }
         min_suppression_threshold = 0.3;
         num_keypoints             = 6;

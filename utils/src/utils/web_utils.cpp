@@ -1,5 +1,5 @@
 #include "utils/web_utils.h"
-#include "config/global.h"
+#include "config/global_config.h"
 #include <iostream>
 #include <stdlib.h>
 #include <signal.h>

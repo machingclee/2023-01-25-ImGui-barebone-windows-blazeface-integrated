@@ -44,9 +44,9 @@ namespace visualize
 
     void draw_landmarks(
         cv::Mat& frame,
-        torch::Tensor points,
+        torch::Tensor& landmark,
         const std::vector<std::tuple<int, int>>& connections,
-        cv::Scalar color = cv::Scalar({ 0, 255, 0 }),
-        int size = 2);
+        int size         = 2,
+        cv::Scalar color = cv::Scalar({ 0, 255, 0 }));
 
 } // namespace visualize

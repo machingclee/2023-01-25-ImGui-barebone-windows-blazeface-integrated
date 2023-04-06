@@ -16,6 +16,7 @@
 #include <iostream>
 #include <tchar.h>
 
-namespace Global {
+namespace global_config
+{
 
-} // namespace Global
+} // namespace config

@@ -40,6 +40,7 @@ def resize_pad(img):
     img1 = np.pad(img1, ((padh1, padh2), (padw1, padw2), (0, 0)))
     pad = (int(padh1 * scale), int(padw1 * scale))
     img2 = cv2.resize(img1, (128, 128))
+    cv2.imwrite("C:\\Users\\user\\Repos\\C++\\2023-01-25-ImGui-barebone-windows-blazeface-integrated\\img2_python.png", img2)
     return img1, img2, scale, pad
 
 
@@ -110,9 +111,9 @@ class BlazeBlock(nn.Module):
     def forward(self, x):
         if self.stride == 2:
             if self.kernel_size == 3:
-                h = F.pad(x, (0, 2, 0, 2), "constant", 0)
+                h = F.pad(x, (0, 2, 0, 2), "constant", 0.0)
             else:
-                h = F.pad(x, (1, 2, 1, 2), "constant", 0)
+                h = F.pad(x, (1, 2, 1, 2), "constant", 0.0)
             x = self.max_pool(x)
         else:
             h = x

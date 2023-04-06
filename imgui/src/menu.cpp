@@ -1,6 +1,6 @@
 #pragma once
 #include "web_server/WebServer.h"
-#include "config/Global.h"
+#include "config/global_config.h"
 #include "imgui/menu.h"
 #include "utils/capture_utils.h"
 #include "utils/web_utils.h"
@@ -35,7 +35,7 @@ void Menu::Render() {
         ImGui::PopStyleColor(2);
 
         ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 30);
-        imguipp::center_text_ex(Global::company_name, 230, 1, false);
+        imguipp::center_text_ex(global_config::company_name, 230, 1, false);
     }
 
     ImGui::NextColumn();
