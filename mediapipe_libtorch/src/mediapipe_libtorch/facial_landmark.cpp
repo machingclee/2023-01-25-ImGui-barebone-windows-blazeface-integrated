@@ -58,6 +58,7 @@ namespace facial_landmark
             {
                 torch::Tensor landmark = landmarks[i];
                 torch::Tensor flag     = flags[i];
+                std::cout << "flag" << flag;
                 visualize::draw_landmarks(
                     frame,
                     landmark.index({ Slice(), Slice(None, 2) }),

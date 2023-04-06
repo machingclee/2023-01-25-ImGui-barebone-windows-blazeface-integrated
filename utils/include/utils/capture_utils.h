@@ -1,10 +1,8 @@
 #pragma once
 #include "torch/torch.h"
+#include "pch.h"
 #include <Windows.h>
 #include <iostream>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/videoio.hpp>
 #include <string>
 
 namespace CaptureUtils {
