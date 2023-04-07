@@ -1,7 +1,7 @@
 set(CMAKE_CXX_STANDARD 14)
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-set(CMAKE_PREFIX_PATH "C:\\Users\\user\\Repos\\C++Libraries\\libtorch_build")
+set(CMAKE_PREFIX_PATH "C:\\Users\\user\\Repos\\C++Libraries\\libtorch_debug")
 set(OpenCV_DIR "C:\\Users\\user\\Repos\\C++Libraries\\opencv\\build\\x64\\vc16")
 find_package(Torch REQUIRED)
 find_package(OpenCV REQUIRED)
